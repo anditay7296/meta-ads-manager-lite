@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "ad_naming_code" text;

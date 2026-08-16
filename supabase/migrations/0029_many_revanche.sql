@@ -1,0 +1,1 @@
+ALTER TABLE "ad_sets" ADD COLUMN "meta_created_time" timestamp with time zone;

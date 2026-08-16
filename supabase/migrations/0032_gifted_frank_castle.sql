@@ -1,0 +1,1 @@
+ALTER TABLE "ad_creatives" ADD COLUMN "cached_thumb_url" text;

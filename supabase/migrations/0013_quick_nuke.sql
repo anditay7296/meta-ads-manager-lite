@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "caption_variations" text[] DEFAULT '{}'::text[] NOT NULL;

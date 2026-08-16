@@ -1,0 +1,29 @@
+{
+  "name": "Campaigns",
+  "short_name": "Campaigns",
+  "start_url": "/campaigns",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#229ED9",
+  "icons": [
+    {
+      "src": "/icon-campaigns-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-campaigns-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-campaigns-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

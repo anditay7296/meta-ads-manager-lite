@@ -1,0 +1,1 @@
+ALTER TABLE "org_settings" ADD COLUMN "agent_name" text DEFAULT 'Jarvis' NOT NULL;

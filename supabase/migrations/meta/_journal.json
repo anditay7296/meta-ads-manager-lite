@@ -1,0 +1,286 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1777794247153,
+      "tag": "0000_init",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777800041137,
+      "tag": "0001_add_projects",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777802430946,
+      "tag": "0002_rule_project_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777804092298,
+      "tag": "0003_agent_actions_message_nullable",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777804493953,
+      "tag": "0004_agent_conv_briefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777805036316,
+      "tag": "0005_org_settings_agent_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777805937632,
+      "tag": "0006_org_settings_capi",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778144764953,
+      "tag": "0007_cheerful_mephisto",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778147565875,
+      "tag": "0008_nappy_raza",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778148189738,
+      "tag": "0009_high_invaders",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778150255730,
+      "tag": "0010_panoramic_bucky",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778150750859,
+      "tag": "0011_empty_swordsman",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1778219957346,
+      "tag": "0012_remarkable_outlaw_kid",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1778271206315,
+      "tag": "0013_quick_nuke",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1778346686261,
+      "tag": "0014_lumpy_sauron",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1778358255619,
+      "tag": "0015_dear_chronomancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1778688000000,
+      "tag": "0016_insights_daily_uq_nulls_not_distinct",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1778656132703,
+      "tag": "0017_absent_thunderbolt_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1778830758468,
+      "tag": "0018_icy_bloodstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1778851875150,
+      "tag": "0019_bumpy_bastion",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1779100166397,
+      "tag": "0020_bright_the_twelve",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779366055297,
+      "tag": "0021_goofy_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779385033934,
+      "tag": "0022_smooth_redwing",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1779387398956,
+      "tag": "0023_colorful_frightful_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779390812929,
+      "tag": "0024_lazy_jasper_sitwell",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1779391346321,
+      "tag": "0025_abandoned_moondragon",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1779702133845,
+      "tag": "0026_material_vivisector",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1779865681907,
+      "tag": "0027_tiresome_red_ghost",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779944090405,
+      "tag": "0028_romantic_ted_forrester",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1780083367007,
+      "tag": "0029_many_revanche",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1780486369059,
+      "tag": "0030_normal_bloodstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1780658049154,
+      "tag": "0031_blue_sebastian_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1781856923713,
+      "tag": "0032_gifted_frank_castle",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1782718510451,
+      "tag": "0033_mysterious_ken_ellis",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1783230314494,
+      "tag": "0034_boring_tiger_shark",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1783272210458,
+      "tag": "0035_windy_blazing_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1783315591719,
+      "tag": "0036_misty_fantastic_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1783323737952,
+      "tag": "0037_clumsy_serpent_society",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1784623525211,
+      "tag": "0038_round_jane_foster",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1785087369353,
+      "tag": "0039_giant_bedlam",
+      "breakpoints": true
+    }
+  ]
+}

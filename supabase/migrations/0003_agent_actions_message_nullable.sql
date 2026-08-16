@@ -1,0 +1,1 @@
+ALTER TABLE "agent_actions" ALTER COLUMN "message_id" DROP NOT NULL;

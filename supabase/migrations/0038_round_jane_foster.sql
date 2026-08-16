@@ -1,0 +1,1 @@
+CREATE INDEX "agent_actions_tool_created_idx" ON "agent_actions" USING btree ("org_id","tool_name","created_at");

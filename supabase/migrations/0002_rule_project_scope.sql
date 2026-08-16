@@ -1,0 +1,3 @@
+ALTER TABLE "automated_rules" ADD COLUMN "applies_to_project_id" uuid;--> statement-breakpoint
+ALTER TABLE "automated_rules" ADD COLUMN "last_ran_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "automated_rules" ADD CONSTRAINT "automated_rules_applies_to_project_id_projects_id_fk" FOREIGN KEY ("applies_to_project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;
