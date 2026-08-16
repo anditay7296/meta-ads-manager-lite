@@ -29,7 +29,16 @@ const VALID_RANGES = new Set<DashboardRange>([
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; q?: string; active?: string; ad_account?: string }>;
+  searchParams: Promise<{
+    range?: string;
+    q?: string;
+    active?: string;
+    ad_account?: string;
+    // Set by the Meta OAuth start/callback routes, which land here because
+    // Lite has no /settings page.
+    connected?: string;
+    error?: string;
+  }>;
 }) {
   const session = await getAppSession();
   if (!session) return null;
@@ -44,16 +53,23 @@ export default async function CampaignsPage({
         <Topbar title="Ads Manager" subtitle="No active project" />
         <ManagerTabs active="campaigns" />
         <EmptyHint
-          title="No project selected"
-          body="Pick or create a project from the topbar."
-          ctaHref="/settings/projects"
-          ctaLabel="Manage projects"
+          title="Workspace not provisioned yet"
+          body="Run scripts/bootstrap-lite.ts to create the project and attach the two ad accounts."
+          ctaHref={null}
+          ctaLabel={null}
         />
       </>
     );
   }
 
-  const { range: rangeParam, q, active: activeParam, ad_account } = await searchParams;
+  const {
+    range: rangeParam,
+    q,
+    active: activeParam,
+    ad_account,
+    connected,
+    error: oauthError,
+  } = await searchParams;
   const range: DashboardRange = VALID_RANGES.has(rangeParam as DashboardRange)
     ? (rangeParam as DashboardRange)
     : "today";
@@ -103,17 +119,27 @@ export default async function CampaignsPage({
         adAccounts={adAccountFilter}
         adAccountOptions={adAccountOptions}
       />
+      {oauthError ? (
+        <div className="border-b border-red-200 bg-red-50 px-6 py-2.5 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+          <strong>Meta connection failed:</strong> {oauthError}
+        </div>
+      ) : connected ? (
+        <div className="border-b border-emerald-200 bg-emerald-50 px-6 py-2.5 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          <strong>Meta reconnected.</strong> Only the allowlisted ad accounts were
+          kept. Hit &quot;Refresh from Meta&quot; to pull the latest campaigns.
+        </div>
+      ) : null}
       <div className="flex-1 overflow-auto bg-white dark:bg-zinc-950">
         {groups.length === 0 ? (
           <EmptyHint
             title="No campaigns to show"
             body={
               activeOnly
-                ? "Either there are no active campaigns yet, or your insights haven't synced. Try toggling Active only off, or syncing in Settings."
-                : "No campaigns are cached for this project yet. Connect Meta and sync in Settings."
+                ? 'Either there are no active campaigns yet, or your insights haven\'t synced. Try toggling "Active only" off, or hit "Refresh from Meta" above.'
+                : 'No campaigns are cached for this project yet. Hit "Refresh from Meta" above to pull them.'
             }
-            ctaHref="/settings"
-            ctaLabel="Open settings"
+            ctaHref={null}
+            ctaLabel={null}
           />
         ) : (
           <CampaignsTable groups={groups} search={search} />
@@ -131,8 +157,10 @@ function EmptyHint({
 }: {
   title: string;
   body: string;
-  ctaHref: string;
-  ctaLabel: string;
+  // Nullable: Lite's empty states have nowhere to send you — the fix is a
+  // script or the toolbar button above, not another page.
+  ctaHref: string | null;
+  ctaLabel: string | null;
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
@@ -140,12 +168,14 @@ function EmptyHint({
         {title}
       </h2>
       <p className="max-w-md text-sm text-zinc-500">{body}</p>
-      <Link
-        href={ctaHref}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-      >
-        {ctaLabel}
-      </Link>
+      {ctaHref && ctaLabel ? (
+        <Link
+          href={ctaHref}
+          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          {ctaLabel}
+        </Link>
+      ) : null}
     </div>
   );
 }

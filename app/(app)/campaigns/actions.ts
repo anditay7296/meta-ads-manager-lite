@@ -54,7 +54,7 @@ export async function refreshFromMetaAction(
     userId: session.userId,
   });
   if (!active) {
-    return { ok: false, message: "No active project. Create one in Settings." };
+    return { ok: false, message: "No active project — run scripts/bootstrap-lite.ts." };
   }
   const datePreset =
     range === "today" || range === "yesterday" || range === "last_30d"
@@ -856,7 +856,7 @@ export async function refreshCampaignsForSyncAction(
       ok: true,
       matchFound: false,
       message:
-        "Only one ad account is allocated to this project — allocate a second one in Settings → Projects first.",
+        "Only one ad account is attached to this project — check LITE_AD_ACCOUNT_IDS and re-run scripts/bootstrap-lite.ts.",
     };
   }
 
@@ -940,7 +940,7 @@ export async function refreshCampaignsForSyncAction(
     message:
       distinctAccountIds.size >= 2
         ? undefined
-        : "No matching campaign found in any other allocated account. Create the campaign in Ads Manager with the exact same name, or allocate the other account in Settings → Projects.",
+        : "No matching campaign found in the other account. Create the campaign in Ads Manager with the exact same name first.",
   };
 }
 

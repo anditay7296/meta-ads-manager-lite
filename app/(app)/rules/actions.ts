@@ -124,9 +124,17 @@ export async function toggleRuleAction(formData: FormData): Promise<void> {
   revalidatePath("/rules");
 }
 
+/**
+ * Dry-run a rule and return what it *would* have paused.
+ *
+ * There is deliberately no `dryRun` parameter. Live enforcement for both ad
+ * accounts belongs to the parent AI Ads Agent app; letting this action take
+ * `dryRun` from the client would give the browser a one-click path to pause
+ * real ads from a page that promises it makes no Meta write calls.
+ * `runRule({ dryRun: true })` makes no Meta write calls.
+ */
 export async function runRuleNowAction(opts: {
   ruleId: string;
-  dryRun: boolean;
 }): Promise<RunRuleResult | { error: string }> {
   let session;
   try {
@@ -145,10 +153,8 @@ export async function runRuleNowAction(opts: {
     )
     .limit(1);
   if (!rule) return { error: "Rule not found." };
-  const r = await runRule({ rule, dryRun: opts.dryRun });
+  const r = await runRule({ rule, dryRun: true });
   revalidatePath("/rules");
-  revalidatePath("/dashboard");
-  revalidatePath("/journal");
   return r;
 }
 

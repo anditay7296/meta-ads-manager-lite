@@ -329,7 +329,7 @@ export function CampaignsTable({
                   Campaign{sortKey === "name" ? <span>{sortDir === "asc" ? "↑" : "↓"}</span> : null}
                 </button>
               </th>
-              <th className="w-28 border-b border-zinc-200 px-3 py-2 text-left dark:border-zinc-800" title="When 'Exempt', rules engine and AI Guard skip this campaign — CPL-spike alerts still fire in /telegram">
+              <th className="w-28 border-b border-zinc-200 px-3 py-2 text-left dark:border-zinc-800" title="When 'Exempt', this app's rule engine skips the campaign. The scheduled runs live in the main AI Ads Agent app — set it there too">
                 Auto-pause
               </th>
               {vis("Budget") && (

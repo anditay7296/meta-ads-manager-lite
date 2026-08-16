@@ -37,7 +37,9 @@ import { sql } from "drizzle-orm";
  * Must never affect the run itself: every hook is wrapped and swallowed.
  */
 
-const APP_PREFIX = "ai-ads-agent-";
+// Must track the app id in client.ts — Inngest prefixes run function ids with
+// "<appId>-", and this strips it back off for the audit rows.
+const APP_PREFIX = "meta-ads-manager-lite-";
 
 function currentMonthKey(): string {
   const now = new Date();

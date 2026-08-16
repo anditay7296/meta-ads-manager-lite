@@ -24,7 +24,7 @@ export async function refreshDashboard(
     userId: session.userId,
   });
   if (!active) {
-    return { ok: false, message: "No active project. Create one in Settings." };
+    return { ok: false, message: "No active project — run scripts/bootstrap-lite.ts." };
   }
   const datePreset =
     range === "today" || range === "yesterday" || range === "last_30d"

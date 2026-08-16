@@ -85,7 +85,8 @@ function redirectToSettings(
   request: NextRequest,
   params: Record<string, string>,
 ): NextResponse {
-  const url = new URL("/settings", request.url);
+  // Lite has no /settings page — land on /campaigns, which owns Meta sync.
+  const url = new URL("/campaigns", request.url);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
   }

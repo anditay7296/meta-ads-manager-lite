@@ -64,7 +64,7 @@ export default async function AdSetsPage({
         <Topbar title="Ads Manager" subtitle="Ad sets — no active project" />
         <ManagerTabs active="adsets" />
         <div className="flex flex-1 items-center justify-center p-12 text-sm text-zinc-500">
-          No active project. Select or create one in Settings → Projects.
+          No active project — run scripts/bootstrap-lite.ts.
         </div>
       </>
     );

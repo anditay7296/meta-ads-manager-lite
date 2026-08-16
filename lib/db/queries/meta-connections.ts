@@ -1,6 +1,7 @@
 import { db, schema } from "@/lib/db/client";
 import { encryptToken } from "@/lib/crypto/tokens";
 import { MetaClient } from "@/lib/meta/client";
+import { filterToLiteAccounts } from "@/lib/lite/accounts";
 import { and, eq, sql } from "drizzle-orm";
 
 const { metaConnections, adAccounts, pages, igAccounts } = schema;
@@ -70,9 +71,17 @@ export async function connectMeta(
     meta.listPages(),
   ]);
 
-  // Ad accounts
-  if (accountsRes.data.length > 0) {
-    const accountRows = accountsRes.data.map((a) => ({
+  // Ad accounts.
+  //
+  // Lite guard: the token can see every account in the business (~8 for this
+  // operator). Filtering here rather than pruning afterwards means a re-run of
+  // Meta OAuth can never re-widen the app past the two allowlisted accounts —
+  // there is no /settings page in Lite to notice or undo it.
+  const liteAccounts = filterToLiteAccounts(
+    accountsRes.data.map((a) => ({ ...a, metaAccountId: a.id })),
+  );
+  if (liteAccounts.length > 0) {
+    const accountRows = liteAccounts.map((a) => ({
       orgId: input.orgId,
       connectionId: conn.id,
       metaAccountId: a.id,
@@ -160,7 +169,9 @@ export async function connectMeta(
 
   return {
     connectionId: conn.id,
-    adAccountCount: accountsRes.data.length,
+    // Count what was actually stored, not what Meta returned — the rest was
+    // filtered out by the Lite allowlist above.
+    adAccountCount: liteAccounts.length,
     pageCount: pagesRes.data.length,
     igAccountCount,
   };

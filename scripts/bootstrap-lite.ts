@@ -23,7 +23,11 @@ import postgres from "postgres";
 import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { db, schema } from "../lib/db/client";
 import { connectMeta } from "../lib/db/queries/meta-connections";
-import { createProject, assignAdAccountsByMetaIds } from "../lib/db/queries/projects";
+import {
+  createProject,
+  assignAdAccountsByMetaIds,
+  assignPageToProject,
+} from "../lib/db/queries/projects";
 import { hashPassword } from "../lib/auth/password";
 import { decryptToken } from "../lib/crypto/tokens";
 import { LITE_AD_ACCOUNT_IDS } from "../lib/lite/accounts";
@@ -270,7 +274,39 @@ async function main() {
   }
   log("accounts", `attached ${assigned.map((a) => a.metaAccountId).join(", ")}`);
 
-  // ─── 6. Storage bucket (Factory uploads) ────────────────────────────────
+  // ─── 6. Attach Facebook Pages to the project ────────────────────────────
+  // The Factory requires a pageId and its dropdown lists pages filtered by
+  // projectId, so without this every Factory run is blocked by an empty
+  // dropdown. connectMeta stored every page the token can see; attach them
+  // all — pages are not account-scoped, and the operator picks per run.
+  const orgPages = await db
+    .select({ id: schema.pages.id, name: schema.pages.name, projectId: schema.pages.projectId })
+    .from(schema.pages)
+    .where(eq(schema.pages.orgId, org.id));
+  const unattached = orgPages.filter((p) => p.projectId !== project.id);
+  for (const page of unattached) {
+    await assignPageToProject({ orgId: org.id, pageId: page.id, projectId: project.id });
+  }
+  if (orgPages.length === 0) {
+    log("pages", "⚠️  no Facebook Pages returned by this token — the Factory will be unusable");
+  } else {
+    log(
+      "pages",
+      `${orgPages.length} page(s) attached to the project${unattached.length === 0 ? " (already)" : ""}`,
+    );
+  }
+
+  // Default pixel for Factory-created ads, if one is configured.
+  const defaultPixelId = process.env.LITE_DEFAULT_PIXEL_ID?.trim();
+  if (defaultPixelId) {
+    await db
+      .update(schema.orgSettings)
+      .set({ defaultPixelId })
+      .where(eq(schema.orgSettings.orgId, org.id));
+    log("pixel", `default pixel set to ${defaultPixelId}`);
+  }
+
+  // ─── 7. Storage bucket (Factory uploads) ────────────────────────────────
   try {
     await ensurePostAssetsBucket();
     log("storage", "post-assets bucket ready");
@@ -281,7 +317,7 @@ async function main() {
     );
   }
 
-  // ─── 7. First sync + insights backfill ──────────────────────────────────
+  // ─── 8. First sync + insights backfill ──────────────────────────────────
   log("sync", "pulling campaigns / ad sets / ads (last_30d insights)…");
   const synced = await syncProject({
     orgId: org.id,

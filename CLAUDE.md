@@ -35,7 +35,16 @@ and an overwritten day on 2026-07-04.
 naming the excluded runners. **Do not add `ruleRunnerFrequent`, `ruleRunnerDaily` or
 `ruleDailyPreview`** without moving enforcement off the parent app first.
 
-`/rules` is manage + dry-run. Dry run makes no Meta write calls.
+`/rules` is manage + dry-run, and that is enforced in two places, not just by convention:
+
+- `RuleRow.tsx` ships a **Dry run** button only. The parent's live "Run now" button is deleted.
+- `runRuleNowAction` takes **no `dryRun` parameter** — it hard-codes `dryRun: true`, so no client
+  payload can request a live run. Keep it that way; the page promises no Meta writes.
+
+Related: `lib/inngest/client.ts` must **not** use the parent's app id `ai-ads-agent`. Inngest keys an
+app by (environment, id), so a shared id means the last deploy to sync wins — if Lite won, the
+parent's rule runners would be archived and silently stop firing. Lite also needs its own Inngest
+*environment*, since the two apps share event names. Step 9 of `/api/dev/setup` asserts both.
 
 ## Stack
 
@@ -79,8 +88,11 @@ Two layers, on purpose:
 
 1. **Data**: bootstrap provisions one project holding only the two accounts, so every existing
    `projectId`-scoped query is already correct and needed no edits.
-2. **Guard**: `lib/lite/accounts.ts` reads `LITE_AD_ACCOUNT_IDS` and `syncProject()` filters through
-   `filterToLiteAccounts()`. A stray account that lands in the table never gets synced or shown.
+2. **Guard**: `lib/lite/accounts.ts` reads `LITE_AD_ACCOUNT_IDS` and is enforced at three
+   chokepoints — `connectMeta()` filters Meta's inventory *before* insert (so re-running OAuth can
+   never re-widen the app to all ~8 accounts the token can see), `syncProject()` skips
+   non-allowlisted rows, and the two clone destinations in `lib/meta/actions.ts` refuse to write
+   outside the list.
 
 ## Local dev
 

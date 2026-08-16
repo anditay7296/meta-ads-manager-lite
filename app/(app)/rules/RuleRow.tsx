@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Play, FlaskConical, Trash2 } from "lucide-react";
+import { FlaskConical, Trash2 } from "lucide-react";
 import { runRuleNowAction, toggleRuleAction, deleteRuleAction } from "./actions";
 import type { RunRuleResult } from "@/lib/rules/runner";
 import { cn, formatMyr, formatNumber } from "@/lib/utils";
@@ -34,9 +34,12 @@ export function RuleRow({ rule }: Props) {
   );
   const isError = latest && "error" in latest;
 
-  const run = (dryRun: boolean) => {
+  // Dry run only. The parent app owns live execution for these accounts —
+  // see the banner on this page and lib/inngest/functions.ts. The server
+  // action hard-codes dryRun too, so there is no live path from this client.
+  const run = () => {
     startTransition(async () => {
-      const r = await runRuleNowAction({ ruleId: rule.id, dryRun });
+      const r = await runRuleNowAction({ ruleId: rule.id });
       setLatest(r);
     });
   };
@@ -141,22 +144,13 @@ export function RuleRow({ rule }: Props) {
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => run(true)}
+              onClick={run}
               disabled={pending}
-              className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+              title="Show what this rule would pause — makes no Meta write calls"
+              className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               <FlaskConical className="h-3 w-3" />
               Dry run
-            </button>
-            <button
-              type="button"
-              onClick={() => run(false)}
-              disabled={pending || !rule.enabled}
-              title={!rule.enabled ? "Enable the rule first" : "Run now"}
-              className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              <Play className="h-3 w-3" />
-              Run now
             </button>
           </div>
         </div>

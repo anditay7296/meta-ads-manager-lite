@@ -4,7 +4,7 @@ import { db, schema } from "@/lib/db/client";
 import { encryptToken, decryptToken } from "@/lib/crypto/tokens";
 import { MetaClient } from "@/lib/meta/client";
 import { cleanEnv, isValidMetaAppId } from "@/lib/meta/oauth";
-import { LITE_AD_ACCOUNT_IDS } from "@/lib/lite/accounts";
+import { LITE_AD_ACCOUNT_IDS, getLiteAdAccountUuids } from "@/lib/lite/accounts";
 
 /**
  * Token-gated health check for Meta Ads Manager Lite.
@@ -88,7 +88,11 @@ export async function GET(request: NextRequest) {
   // ─── 6. Ad accounts — must be exactly the Lite allowlist ────────────────
   out.adAccounts = await stepAsync(async () => {
     const rows = await db
-      .select({ metaAccountId: schema.adAccounts.metaAccountId, name: schema.adAccounts.name })
+      .select({
+        orgId: schema.adAccounts.orgId,
+        metaAccountId: schema.adAccounts.metaAccountId,
+        name: schema.adAccounts.name,
+      })
       .from(schema.adAccounts);
     const found = rows.map((r) => r.metaAccountId).sort();
     const want = [...LITE_AD_ACCOUNT_IDS].sort();
@@ -100,7 +104,11 @@ export async function GET(request: NextRequest) {
     if (missing.length > 0) {
       throw new Error(`allowlisted accounts not provisioned: ${missing.join(", ")}`);
     }
-    return { accounts: rows.map((r) => `${r.metaAccountId} (${r.name})`) };
+    const uuids = rows[0] ? await getLiteAdAccountUuids(rows[0].orgId) : [];
+    return {
+      accounts: rows.map((r) => `${r.metaAccountId} (${r.name})`),
+      resolvedUuids: uuids.length,
+    };
   });
 
   // ─── 7. Meta connection + live token ────────────────────────────────────
@@ -146,6 +154,7 @@ export async function GET(request: NextRequest) {
   // ─── 9. Rule runners must NOT be scheduled here ─────────────────────────
   out.rulesNotScheduled = await stepAsync(async () => {
     const { functions } = await import("@/lib/inngest/functions");
+    const { inngest } = await import("@/lib/inngest/client");
     const ids = functions.map((f) => (f as { id: (prefix?: string) => string }).id());
     const forbidden = ids.filter((id) => id.includes("rules-"));
     if (forbidden.length > 0) {
@@ -154,7 +163,15 @@ export async function GET(request: NextRequest) {
           `runs these against both accounts; two schedulers would double-pause the same ads`,
       );
     }
-    return { registered: ids };
+    // A shared app id means whichever app syncs last owns the registration —
+    // if Lite won that race, the parent's rule runners would be archived and
+    // silently stop firing.
+    if (inngest.id === "ai-ads-agent") {
+      throw new Error(
+        "Inngest app id collides with the parent app — set a distinct id in lib/inngest/client.ts",
+      );
+    }
+    return { registered: ids, inngestAppId: inngest.id };
   });
 
   // ─── 10. Rules present (managed here, executed by the parent app) ───────

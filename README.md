@@ -20,10 +20,15 @@ schedulers (00:00 KL daily + every 5 minutes). Two schedulers evaluating the sam
 double-pause them.
 
 `/rules` lets you draft, edit and **dry-run** rules — dry run makes no Meta write calls. To make a
-rule live, mirror it into the parent app.
+rule live, mirror it into the parent app. The parent's live "Run now" button is deliberately absent
+here, and the server action hard-codes `dryRun: true`, so nothing on this page can pause a real ad.
 
 The four Inngest functions that *are* registered: daily insights sync (01:00 KL), on-demand insights
 sync, the bulk-launch Factory, and cross-account clone jobs.
+
+⚠️ **Inngest must be a separate app and a separate environment from the parent.** The two share
+event names, and a shared app id would make the last deploy to sync archive the other's functions —
+including the parent's rule runners.
 
 ---
 
@@ -105,7 +110,8 @@ Import the repo, then set every variable from `.env.example` in the Vercel proje
 
 - `NEXT_PUBLIC_APP_URL` and `META_OAUTH_REDIRECT_URI` must point at the deployed domain.
 - Set `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` and drop `INNGEST_DEV`; the Inngest app syncs from
-  `/api/inngest`.
+  `/api/inngest`. Take these from a **separate Inngest app and environment** from the parent — see
+  the warning above.
 - Factory creative uploads need `SUPABASE_SERVICE_ROLE_KEY` and the `post-assets` storage bucket,
   which the bootstrap script creates.
 

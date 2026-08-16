@@ -11,10 +11,14 @@ import { db, schema } from "@/lib/db/client";
  *
  * The database is already narrow — bootstrap provisions one project holding
  * only these accounts, so every existing project-scoped query is correct
- * without modification. This module is the belt-and-braces guard on top: the
- * sync path filters through it, so an account that somehow lands in the DB
- * (a stray Meta inventory refresh, a hand-written insert) never gets synced
- * and never shows up in the UI.
+ * without modification. This module is the belt-and-braces guard on top,
+ * enforced at three chokepoints:
+ *
+ *   1. `connectMeta()` — filters Meta's inventory before insert, so re-running
+ *      OAuth can never re-widen the app to all ~8 accounts the token can see.
+ *   2. `syncProject()` — skips any non-allowlisted account already in the table.
+ *   3. `cloneAdSetToCampaign()` / `createMatchingCampaignInAccount()` in
+ *      lib/meta/actions.ts — refuse to write into an outside account.
  */
 const DEFAULT_ACCOUNT_IDS = [
   "act_1690421202260749",
@@ -58,6 +62,9 @@ export function filterToLiteAccounts<T extends { metaAccountId: string }>(
  * Resolve the allowlist to `ad_accounts.id` UUIDs for an org. Returns an empty
  * array when nothing is provisioned yet — callers should treat that as "no
  * accounts to work on", not as an error.
+ *
+ * Used by the /api/dev/setup health check to assert the table holds exactly
+ * the allowlisted accounts and nothing else.
  */
 export async function getLiteAdAccountUuids(orgId: string): Promise<string[]> {
   const rows = await db

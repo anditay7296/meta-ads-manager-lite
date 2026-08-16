@@ -2,8 +2,8 @@
  * Generates the app icon set from inline SVG. White glyph on the Telegram blue
  * gradient tile, one glyph per surface:
  *   root       -> "AI" lettermark
- *   /telegram  -> paper plane
  *   /dashboard -> ascending bar chart
+ *   /campaigns -> megaphone
  *
  *   node --import tsx scripts/generate-icons.ts
  *
@@ -60,14 +60,11 @@ const bullseye =
 
 // [circle tile (transparent corners), full-bleed tile] per surface.
 const rootIcon = { circle: svg(circleBg + aiMark(1.15)), full: svg(squareBg + aiMark(1.05)) };
-const telegram = { circle: svg(circleBg + planeCircle), full: svg(squareBg + planeFull) };
 const dashboard = { circle: svg(circleBg + chart), full: svg(squareBg + chart) };
-const agent = { circle: svg(circleBg + sparkle), full: svg(squareBg + sparkle) };
 const campaigns = { circle: svg(circleBg + bullseye), full: svg(squareBg + bullseye) };
 // Photo/image (creative library): rounded frame with the sun + mountains knocked out (evenodd).
 const photo =
   '<path fill="#fff" fill-rule="evenodd" d="M76 80H164A16 16 0 0 1 180 96V144A16 16 0 0 1 164 160H76A16 16 0 0 1 60 144V96A16 16 0 0 1 76 80ZM86 89a11 11 0 1 0 0 22a11 11 0 1 0 0-22ZM70 152L100 116L120 136L144 110L172 152Z"/>';
-const creatives = { circle: svg(circleBg + photo), full: svg(squareBg + photo) };
 
 // High density so the 240-unit viewBox rasterizes well above any target, then downscales crisp.
 const png = (s: string, size: number) =>
@@ -118,12 +115,12 @@ async function main() {
   // start_url (NOT the page they were added from), so sharing the root manifest
   // sent every tile to "/" -> /dashboard. Distinct manifests also make Android
   // treat each as its own installable app, so per-route icons work there too.
+  // Lite ships two per-route icon sets. The parent's telegram / agent /
+  // creatives routes do not exist here, and writing into their deleted
+  // directories throws ENOENT.
   for (const [route, label, art] of [
-    ["telegram", "Telegram", telegram],
     ["dashboard", "Dashboard", dashboard],
-    ["agent", "Agent", agent],
     ["campaigns", "Campaigns", campaigns],
-    ["creatives", "Creatives", creatives],
   ] as const) {
     await writeFile(join(root, `app/(app)/${route}/icon.svg`), art.circle);
     await writeFile(join(root, `app/(app)/${route}/apple-icon.png`), await png(art.full, 180));

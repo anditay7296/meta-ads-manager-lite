@@ -30,10 +30,11 @@ import { checkAndUpdateAccountStatus } from "@/lib/meta/actions";
  *      + rate-limit hiccups without needing the operator to click "Sync
  *      now".
  *   2. **Sync-failure alert.** If an account still ends up with no
- *      insights after the retry, fire a `⚠️ 同步告警` notification through
- *      notifyOps with the account name in the title so the operator can
- *      tell which account failed. Skipped silently when the account has
- *      zero active ads (genuinely nothing to sync — not a failure).
+ *      insights after the retry, write a named alert to the Inngest run log
+ *      via console.error — Lite ships no notification channels, so the
+ *      Inngest dashboard is where it surfaces. Skipped silently when the
+ *      account has zero active ads (genuinely nothing to sync — not a
+ *      failure).
  */
 type SyncSummary = {
   orgId: string;
@@ -155,8 +156,8 @@ const handler = async ({
     const r = await step.run(`finalize-${t.adAccountId}`, async () => {
       // Per-account alert — fires only when the account had active ads but
       // produced no insights even after retry. Prevents zero-volume
-      // accounts from generating noise; surfaces real sync breakage so the
-      // operator sees a Telegram ping instead of an empty brief.
+      // accounts from generating noise; surfaces real sync breakage in the
+      // Inngest run log instead of leaving a silently empty dashboard.
       const stillEmpty =
         firstError !== null ||
         (counts !== null && counts.insightsRows === 0);

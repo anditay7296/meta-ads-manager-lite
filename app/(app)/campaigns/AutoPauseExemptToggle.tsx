@@ -88,7 +88,7 @@ export function AutoPauseExemptToggle({
         )}
         title={
           optimistic
-            ? `Rules + AI Guard skip this campaign${currentReason ? ` (${currentReason})` : ""}. Click to turn off.`
+            ? `Rules skip this campaign${currentReason ? ` (${currentReason})` : ""}. Click to turn off.`
             : "Click to exempt this campaign from auto-pause rules"
         }
       >
@@ -108,9 +108,10 @@ export function AutoPauseExemptToggle({
           {!optimistic ? (
             <>
               <p className="mb-2 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
-                Skip every automated pause rule and the agent&apos;s pause
-                proposals for this campaign. CPL-spike alerts will still fire
-                in <span className="font-mono">/telegram</span>.
+                Skip this campaign in every pause rule. Note the scheduled
+                rules that actually pause ads run in the main AI Ads Agent app
+                against its own database — set the exemption there too, or the
+                00:00 KL run will still pause this campaign.
               </p>
               <label className="mb-1 block text-[11px] font-medium text-zinc-700 dark:text-zinc-300">
                 Reason (optional)

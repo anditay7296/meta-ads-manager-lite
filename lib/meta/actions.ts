@@ -4,6 +4,7 @@ import { getMetaClientForAdAccount } from "@/lib/meta/get-client";
 import type { MetaClient } from "@/lib/meta/client";
 import { journalAppend } from "@/lib/db/queries/journal";
 import { MetaApiError } from "@/lib/meta/types";
+import { isLiteAdAccount } from "@/lib/lite/accounts";
 
 const { ads, adAccounts, adSets, campaigns } = schema;
 
@@ -1349,6 +1350,16 @@ export async function syncAdsBetweenAdSets(opts: {
     .where(and(eq(adAccounts.orgId, opts.orgId), eq(adAccounts.id, dstCampaign.adAccountId)))
     .limit(1);
   if (!dstAccount) return { ...result, errors: ["Destination ad account not found"] };
+  // Lite guard: never write into an account outside the allowlist, whatever
+  // account id the caller resolved.
+  if (!isLiteAdAccount(dstAccount.metaAccountId)) {
+    return {
+      ...result,
+      errors: [
+        `Destination ad account ${dstAccount.metaAccountId} is outside LITE_AD_ACCOUNT_IDS`,
+      ],
+    };
+  }
 
   // Cross-account clone writes against the destination ad account, so we
   // need the connection that owns the destination's token.
@@ -1678,6 +1689,13 @@ export async function fallbackPrepCloneAdSet(opts: {
     .where(and(eq(adAccounts.orgId, opts.orgId), eq(adAccounts.id, dstCampaign.adAccountId)))
     .limit(1);
   if (!dstAccount) return { ok: false, message: "Destination ad account not found" };
+  // Lite guard: see the matching check in the sync path above.
+  if (!isLiteAdAccount(dstAccount.metaAccountId)) {
+    return {
+      ok: false,
+      message: `Destination ad account ${dstAccount.metaAccountId} is outside LITE_AD_ACCOUNT_IDS`,
+    };
+  }
 
   // Route through the destination account's connection — that's the token
   // that needs ads_management on the dest side.
@@ -3012,7 +3030,7 @@ export async function createStarterCampaign(opts: {
   if (!adNamingCode) {
     return {
       ok: false,
-      message: "Set this project's ad-naming code first (Settings → Projects).",
+      message: "Set this project's ad-naming code first — projects.ad_naming_code is unset.",
     };
   }
 
@@ -3024,7 +3042,7 @@ export async function createStarterCampaign(opts: {
   if (!page) {
     return {
       ok: false,
-      message: "Assign a Page to this project first (Settings → Projects).",
+      message: "No Facebook Page is attached to this project — re-run scripts/bootstrap-lite.ts, which assigns them.",
     };
   }
 

@@ -3,9 +3,10 @@ import { randomBytes } from "node:crypto";
 import { buildAuthorizeUrl, cleanEnv, isValidMetaAppId } from "@/lib/meta/oauth";
 import { getAppSession } from "@/lib/auth/session";
 
-/** Bounce back to Settings with a human-readable banner (page renders ?error=). */
+/** Bounce back to /campaigns with a human-readable banner (page renders ?error=). */
 function settingsError(request: NextRequest, message: string) {
-  const dest = new URL("/settings", request.url);
+  // Lite has no /settings page — /campaigns is the surface that owns Meta sync.
+  const dest = new URL("/campaigns", request.url);
   dest.searchParams.set("error", message);
   return NextResponse.redirect(dest);
 }
