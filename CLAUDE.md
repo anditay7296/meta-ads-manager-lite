@@ -76,9 +76,10 @@ more than it saves. Unused tables just sit empty.
 app/
   (app)/{dashboard,campaigns,copy,rules}/   The four surfaces (no auth gate)
   api/{inngest,meta/oauth,meta/deauthorize,dev}/
-components/app-shell/                       Sidebar, Topbar, UserMenu, nav-items
+components/app-shell/                       Sidebar, Topbar, UserMenu, Logo, nav-items
                                             (no ProjectBar — single project)
 lib/
+  brand.ts                                  ★ logo geometry + palette
   lite/accounts.ts                          ★ the ad-account allowlist
   db/                                       schema.ts, client.ts, queries/<topic>.ts
   meta/                                     client.ts, sync.ts, actions.ts, posting.ts, get-client.ts
@@ -117,6 +118,26 @@ curl "http://localhost:3000/api/dev/setup?token=$DEV_SETUP_TOKEN"
 ```
 
 Step 9 of that check fails loudly if a rule runner ever gets registered here.
+
+## Branding
+
+The AI Mastermind mark is **vector, defined once** in `lib/brand.ts` — facet paths, gradients and
+the accent colour. Two consumers read it:
+
+- `components/app-shell/Logo.tsx` inlines it as JSX (sidebar, 404). No `next/image`, so
+  `dangerouslyAllowSVG` stays off and the logo costs no request on first paint.
+- `scripts/generate-icons.ts` bakes it into `app/icon.svg`, `apple-icon.png`, `favicon.ico`,
+  `public/icon-*` and `public/logo.{svg,png}`.
+
+So **edit `lib/brand.ts`, then re-run the generator** — editing the script alone makes the tab icon
+and the in-app logo drift apart:
+
+```bash
+node --import tsx scripts/generate-icons.ts
+```
+
+`BRAND_ACCENT` is the single source for `theme_color` / `themeColor`; it is read by `app/layout.tsx`,
+`app/manifest.ts` and the per-route `.webmanifest` files the generator writes.
 
 ## Conventions
 
