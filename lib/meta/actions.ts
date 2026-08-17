@@ -2120,6 +2120,79 @@ export type CloneAdSetResult = {
   message?: string;
 };
 
+/** Meta rejects an ad set whose audiences the destination cannot resolve. */
+const SUBCODE_UNAVAILABLE_CUSTOM_AUDIENCE = 1359207;
+
+/**
+ * True when Meta refused the create specifically because the targeting names
+ * custom/lookalike audiences that are unavailable in the destination account.
+ * Matches on subcode first, message text second — Meta has been inconsistent
+ * about which it populates.
+ */
+function isUnavailableAudienceError(err: unknown): boolean {
+  if (!(err instanceof MetaApiError) || !err.metaError) return false;
+  const me = err.metaError;
+  if (me.error_subcode === SUBCODE_UNAVAILABLE_CUSTOM_AUDIENCE) return true;
+  const text = `${me.message ?? ""} ${me.error_user_msg ?? ""}`.toLowerCase();
+  return text.includes("custom audiences") && text.includes("no longer available");
+}
+
+/**
+ * Strip every custom/lookalike audience reference out of a targeting spec.
+ *
+ * Audiences are ad-account-scoped: a cross-account clone carries IDs the
+ * destination cannot resolve, and audiences shared between accounts can go
+ * stale independently. Recursive because the IDs hide in nested structures
+ * (`flexible_spec[]`, `exclusions`), not just at the top level.
+ *
+ * Returns `changed: false` when there was nothing to remove, so the caller can
+ * skip a retry that would fail identically.
+ */
+function stripAudienceRefs(targeting: unknown): {
+  targeting: Record<string, unknown>;
+  changed: boolean;
+} {
+  if (!targeting || typeof targeting !== "object") {
+    return { targeting: {}, changed: false };
+  }
+  const AUDIENCE_KEYS = new Set([
+    "custom_audiences",
+    "excluded_custom_audiences",
+    "lookalike_audiences",
+  ]);
+  let changed = false;
+
+  const scrub = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(scrub);
+    if (!node || typeof node !== "object") return node;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (AUDIENCE_KEYS.has(k)) {
+        changed = true;
+        continue;
+      }
+      out[k] = scrub(v);
+    }
+    return out;
+  };
+
+  const cleaned = scrub(targeting) as Record<string, unknown>;
+
+  // A flexible_spec entry that held nothing but audiences is now `{}`, and Meta
+  // rejects empty spec objects — drop them rather than send a malformed spec.
+  const spec = cleaned.flexible_spec;
+  if (Array.isArray(spec)) {
+    const kept = spec.filter(
+      (e) => e && typeof e === "object" && Object.keys(e as object).length > 0,
+    );
+    if (kept.length !== spec.length) changed = true;
+    if (kept.length === 0) delete cleaned.flexible_spec;
+    else cleaned.flexible_spec = kept;
+  }
+
+  return { targeting: cleaned, changed };
+}
+
 /**
  * Clone a source ad set into a destination campaign as a brand-new ad set, then
  * copy every ad inside it via syncAdsBetweenAdSets. The new ad set is created
@@ -2130,6 +2203,9 @@ export type CloneAdSetResult = {
  * Cross-account clones: custom-audience IDs belong to the source account and are
  * invalid in the destination. We borrow the custom_audiences from an existing ad
  * set in the destination campaign instead, keeping all other targeting intact.
+ * If Meta still rejects them as unavailable, the audiences are dropped and the
+ * ad set is created without them — a paused ad set the operator can attach
+ * audiences to beats a failed clone (`customAudiencesStripped` flags this).
  */
 export async function cloneAdSetToCampaign(opts: {
   orgId: string;
@@ -2553,11 +2629,31 @@ export async function cloneAdSetToCampaign(opts: {
 
   let newMetaId: string;
   try {
-    const res = await meta.client.createAdSet(
-      dstAccount.metaAccountId,
-      body,
-      callerLabel(opts.actor),
-    );
+    let res;
+    try {
+      res = await meta.client.createAdSet(
+        dstAccount.metaAccountId,
+        body,
+        callerLabel(opts.actor),
+      );
+    } catch (createErr) {
+      // Audiences the destination can't resolve are the single most common
+      // cross-account rejection (LAL campaigns especially: every lookalike
+      // belongs to the source account). Losing the whole ad set over it is the
+      // wrong trade — drop the audiences and keep the rest of the targeting so
+      // the operator gets a paused ad set to attach audiences to.
+      const stripped = isUnavailableAudienceError(createErr)
+        ? stripAudienceRefs(body.targeting)
+        : { targeting: {}, changed: false };
+      if (!stripped.changed) throw createErr;
+      res = await meta.client.createAdSet(
+        dstAccount.metaAccountId,
+        { ...body, targeting: stripped.targeting },
+        callerLabel(opts.actor),
+      );
+      customAudiencesFromRef = false;
+      customAudiencesStripped = true;
+    }
     newMetaId = res.id;
   } catch (err) {
     // Surface full Meta error details (subcode + user message) to aid debugging.
