@@ -34,7 +34,6 @@ export async function GET(request: NextRequest) {
       "DATABASE_URL_DIRECT",
       "NEXT_PUBLIC_SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
-      "SESSION_SECRET",
       "APP_ENCRYPTION_KEY",
       "META_APP_ID",
       "META_APP_SECRET",

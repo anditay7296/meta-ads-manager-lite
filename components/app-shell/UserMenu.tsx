@@ -1,6 +1,10 @@
-import { LogOut } from "lucide-react";
 import { getAppSession } from "@/lib/auth/session";
 
+/**
+ * Shows who the app is acting as. There is no sign-out button because there
+ * is no sign-in — see lib/auth/session.ts. Access control is handled outside
+ * the app (Vercel Deployment Protection).
+ */
 export async function UserMenu() {
   const session = await getAppSession();
   if (!session) return null;
@@ -12,15 +16,6 @@ export async function UserMenu() {
       <span className="flex-1 truncate text-xs text-zinc-700 dark:text-zinc-300">
         {session.email}
       </span>
-      <form action="/api/auth/signout" method="post">
-        <button
-          type="submit"
-          aria-label="Sign out"
-          className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-        </button>
-      </form>
     </div>
   );
 }

@@ -2,11 +2,14 @@
  * One-shot provisioning for Meta Ads Manager Lite. Idempotent — safe to
  * re-run; every step skips work that already exists.
  *
- * Creates: org → user (password login) → project → Meta connection →
- * exactly the two allowlisted ad accounts → storage bucket → first sync.
+ * Creates: org → owner user → project → Meta connection → exactly the two
+ * allowlisted ad accounts → Pages → storage bucket → first sync.
+ *
+ * The app has no sign-in (see lib/auth/session.ts), so the user row exists
+ * only to own the org and stamp created_by — it carries no password.
  *
  * Usage:
- *   node --env-file=.env.local --import tsx scripts/bootstrap-lite.ts --password 'your-password'
+ *   npm run bootstrap
  *
  * The Meta token comes from one of two places, checked in order:
  *   1. META_LONG_LIVED_TOKEN in the env — paste a token directly.
@@ -28,7 +31,6 @@ import {
   assignAdAccountsByMetaIds,
   assignPageToProject,
 } from "../lib/db/queries/projects";
-import { hashPassword } from "../lib/auth/password";
 import { decryptToken } from "../lib/crypto/tokens";
 import { LITE_AD_ACCOUNT_IDS } from "../lib/lite/accounts";
 import { syncProject } from "../lib/meta/sync";
@@ -39,11 +41,6 @@ const PROJECT_NAME = "AI Agency";
 const OWNER_EMAIL = (process.env.LITE_OWNER_EMAIL ?? "andi@funnelduo.com")
   .trim()
   .toLowerCase();
-
-function arg(flag: string): string | null {
-  const i = process.argv.indexOf(flag);
-  return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : null;
-}
 
 function log(step: string, msg: string) {
   console.log(`[${step}] ${msg}`);
@@ -117,8 +114,6 @@ async function resolveMetaToken(): Promise<{
 }
 
 async function main() {
-  const password = arg("--password") ?? process.env.LITE_OWNER_PASSWORD ?? null;
-
   // ─── 1. Org ─────────────────────────────────────────────────────────────
   let [org] = await db
     .select({ id: schema.orgs.id })
@@ -147,34 +142,21 @@ async function main() {
 
   // ─── 2. Owner user + membership ─────────────────────────────────────────
   let [user] = await db
-    .select({ id: schema.users.id, passwordHash: schema.users.passwordHash })
+    .select({ id: schema.users.id })
     .from(schema.users)
     .where(eq(schema.users.email, OWNER_EMAIL))
     .limit(1);
 
   if (!user) {
-    if (!password) {
-      throw new Error(
-        `No user yet for ${OWNER_EMAIL} — pass --password '<password>' so sign-in works.`,
-      );
-    }
+    // No password_hash: this app has no sign-in. The row exists to own the
+    // org and stamp created_by on the project.
     [user] = await db
       .insert(schema.users)
-      .values({
-        id: randomUUID(),
-        email: OWNER_EMAIL,
-        passwordHash: hashPassword(password),
-      })
-      .returning({ id: schema.users.id, passwordHash: schema.users.passwordHash });
+      .values({ id: randomUUID(), email: OWNER_EMAIL })
+      .returning({ id: schema.users.id });
     log("user", `created ${OWNER_EMAIL}`);
-  } else if (password) {
-    await db
-      .update(schema.users)
-      .set({ passwordHash: hashPassword(password) })
-      .where(eq(schema.users.id, user.id));
-    log("user", `password reset for ${OWNER_EMAIL}`);
   } else {
-    log("user", `${OWNER_EMAIL} already exists (password unchanged)`);
+    log("user", `${OWNER_EMAIL} already exists`);
   }
 
   await db
@@ -339,7 +321,7 @@ async function main() {
   console.log(`   org        ${ORG_NAME}`);
   console.log(`   project    ${PROJECT_NAME}`);
   console.log(`   accounts   ${counts.n} (expected ${LITE_AD_ACCOUNT_IDS.length})`);
-  console.log(`   sign in    ${OWNER_EMAIL}`);
+  console.log(`   acting as  ${OWNER_EMAIL} (no sign-in — see lib/auth/session.ts)`);
   console.log("\n   Next: npm run dev, then open http://localhost:3000/dashboard");
 }
 

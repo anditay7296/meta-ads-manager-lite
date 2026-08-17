@@ -53,8 +53,15 @@ TypeScript, Tailwind v4, Drizzle ORM over Supabase Postgres, Inngest for durable
 API pinned to v21 (`lib/meta/types.ts:META_API_VERSION`). **No Anthropic dependency** — the agent and
 brief subsystems were removed, so there is no `ANTHROPIC_API_KEY`.
 
-Auth is custom: scrypt password hash in `users.password_hash`, HMAC-signed cookie
-(`lib/auth/cookie.ts`), edge gate in `lib/auth/middleware.ts`. No Supabase Auth anywhere.
+**There is no authentication.** The parent's password + signed-cookie login was removed on
+request: no `/login` route, no password, no session cookie, no edge middleware. `getAppSession()`
+(`lib/auth/session.ts`) resolves the single org member straight from the database, so every request
+is the owner. The signature is unchanged, which is why its ~25 callers needed no edits.
+
+Access control therefore lives **outside** the app. On Vercel, enable Deployment Protection
+(Vercel Authentication or Password Protection) — without it, anyone with the URL can pause ads, move
+budgets and bulk-launch on both live accounts. `users.password_hash` still exists in the schema and
+is simply never read.
 
 ## Its own database
 
@@ -67,9 +74,8 @@ more than it saves. Unused tables just sit empty.
 
 ```
 app/
-  (app)/{dashboard,campaigns,copy,rules}/   The four surfaces
-  (auth)/login/                             Email + password
-  api/{auth/signout,inngest,meta/oauth,meta/deauthorize,dev}/
+  (app)/{dashboard,campaigns,copy,rules}/   The four surfaces (no auth gate)
+  api/{inngest,meta/oauth,meta/deauthorize,dev}/
 components/app-shell/                       Sidebar, Topbar, UserMenu, nav-items
                                             (no ProjectBar — single project)
 lib/
@@ -78,7 +84,7 @@ lib/
   meta/                                     client.ts, sync.ts, actions.ts, posting.ts, get-client.ts
   rules/                                    engine.ts, runner.ts, types.ts (dry-run + manual run only)
   inngest/                                  4 registered functions
-  auth/                                     session, cookie, password, active-project
+  auth/                                     session (no-op resolver), active-project, access
 scripts/bootstrap-lite.ts                   One-shot idempotent provisioning
 ```
 
@@ -100,7 +106,7 @@ Two layers, on purpose:
 npm run dev          # :3000
 npm run typecheck
 npm run build
-npm run bootstrap -- --password '<password>'   # idempotent provisioning
+npm run bootstrap    # idempotent provisioning
 npm run db:push      # apply lib/db/schema.ts to Supabase
 ```
 

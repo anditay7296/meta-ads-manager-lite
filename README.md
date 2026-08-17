@@ -8,8 +8,18 @@ ad accounts and four pages.
 **Pages:** Dashboard · Campaigns · Copywriting · Automated Rules
 
 Same stack as the parent, so the UI is identical: Next.js 16 (App Router) + TypeScript + Tailwind v4,
-Drizzle over Supabase Postgres, Inngest for durable jobs, Meta Graph API v21. Password auth with an
-HMAC-signed cookie — no Supabase Auth, no Anthropic dependency.
+Drizzle over Supabase Postgres, Inngest for durable jobs, Meta Graph API v21. No Supabase Auth, no
+Anthropic dependency.
+
+## 🔓 There is no sign-in
+
+This app has no login screen, no password and no session cookie — opening the URL puts you straight
+on the dashboard as the owner. That is deliberate.
+
+**So gate it at the platform.** On Vercel: Project → Settings → Deployment Protection → enable
+*Vercel Authentication* (only your Vercel account can open it) or *Password Protection*. Without
+that, anyone who learns the URL can pause ads, change budgets and bulk-launch on
+`act_1690421202260749` and `act_1386521543403841`.
 
 ---
 
@@ -48,7 +58,7 @@ Fill in `DATABASE_URL` (pooled, port 6543), `DATABASE_URL_DIRECT` (port 5432),
 Generate the app secrets — fresh values, not the parent's:
 
 ```bash
-node -e "const c=require('crypto');console.log('SESSION_SECRET='+c.randomBytes(32).toString('hex'));console.log('APP_ENCRYPTION_KEY='+c.randomBytes(32).toString('base64'));console.log('DEV_SETUP_TOKEN='+c.randomBytes(16).toString('hex'))"
+node -e "const c=require('crypto');console.log('APP_ENCRYPTION_KEY='+c.randomBytes(32).toString('base64'));console.log('DEV_SETUP_TOKEN='+c.randomBytes(16).toString('hex'))"
 ```
 
 ### 2. Schema
@@ -60,8 +70,8 @@ npm run db:push
 
 ### 3. Provision
 
-The bootstrap script creates the org, your login, the project, the Meta connection, and attaches
-exactly the two allowlisted ad accounts, then runs the first sync. It is idempotent.
+The bootstrap script creates the org, the owner row, the project, the Meta connection, and attaches
+exactly the two allowlisted ad accounts and your Pages, then runs the first sync. It is idempotent.
 
 The Meta token comes from either:
 
@@ -71,7 +81,7 @@ The Meta token comes from either:
   which would require whitelisting this app's callback URL in the Meta app settings first.
 
 ```bash
-npm run bootstrap -- --password 'your-login-password'
+npm run bootstrap
 ```
 
 ### 4. Run
@@ -80,7 +90,7 @@ npm run bootstrap -- --password 'your-login-password'
 npm run dev
 ```
 
-Sign in at http://localhost:3000/login.
+Open http://localhost:3000 — no sign-in.
 
 ---
 
@@ -108,6 +118,7 @@ curl "http://localhost:3000/api/dev/setup?token=$DEV_SETUP_TOKEN"
 
 Import the repo, then set every variable from `.env.example` in the Vercel project. Notes:
 
+- **Turn on Deployment Protection first** — the app has no login of its own.
 - `NEXT_PUBLIC_APP_URL` and `META_OAUTH_REDIRECT_URI` must point at the deployed domain.
 - Set `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` and drop `INNGEST_DEV`; the Inngest app syncs from
   `/api/inngest`. Take these from a **separate Inngest app and environment** from the parent — see

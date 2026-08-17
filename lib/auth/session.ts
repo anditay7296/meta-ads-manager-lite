@@ -1,10 +1,5 @@
-import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db/client";
-import {
-  SESSION_COOKIE_NAME,
-  verifySessionToken,
-} from "@/lib/auth/cookie";
 
 export type AppSession = {
   userId: string;
@@ -13,64 +8,55 @@ export type AppSession = {
 };
 
 /**
- * Server-side session lookup. Returns null if not signed in OR not yet
- * bootstrapped into an org. No Supabase Auth calls anywhere — auth lives
- * entirely in our Postgres + a signed cookie.
+ * ─────────────────────────────────────────────────────────────────────────
+ * THIS APP HAS NO SIGN-IN. Every request is the owner.
+ * ─────────────────────────────────────────────────────────────────────────
+ * The parent app authenticates with a scrypt password hash and an HMAC-signed
+ * cookie. Lite deliberately ships none of that — no /login route, no password,
+ * no session cookie, no middleware gate. Anyone who can reach the URL is
+ * treated as the owner.
  *
- * Two paths:
- *   1. AUTH_BYPASS_MODE — resolve via AUTH_BYPASS_EMAIL direct lookup, no cookie required.
- *   2. Normal — read app_session cookie, verify HMAC, look up user + org.
+ * Lite is single-tenant by construction: bootstrap creates exactly one org
+ * with one member, so "the session" is just that row. `LITE_OWNER_EMAIL`
+ * picks the user when more than one exists; otherwise the first (and only)
+ * org member wins.
+ *
+ * ⚠️ Access control therefore lives entirely OUTSIDE this app. On Vercel,
+ * turn on Deployment Protection (Vercel Authentication or Password
+ * Protection) — without it, anyone with the deployment URL can pause ads,
+ * move budgets and bulk-launch on both live Meta accounts.
+ *
+ * The signature is unchanged from the parent so the ~25 callers of
+ * getAppSession() / requireAppSession() needed no edits.
  */
 export async function getAppSession(): Promise<AppSession | null> {
-  // Bypass mode — resolve the session by AUTH_BYPASS_EMAIL via direct
-  // Postgres. Kept as the escape hatch so the owner can stay signed in
-  // while transitioning to password auth.
-  const bypassEmail = process.env.AUTH_BYPASS_EMAIL?.trim().toLowerCase();
-  if (process.env.AUTH_BYPASS_MODE === "true" && bypassEmail) {
-    const userRow = await db
-      .select({ id: schema.users.id, email: schema.users.email })
-      .from(schema.users)
-      .where(eq(schema.users.email, bypassEmail))
-      .limit(1);
-    if (userRow.length === 0) return null;
-    const member = await db
-      .select({ orgId: schema.orgMembers.orgId })
-      .from(schema.orgMembers)
-      .where(eq(schema.orgMembers.userId, userRow[0].id))
-      .limit(1);
-    if (member.length === 0) return null;
-    return {
-      userId: userRow[0].id,
-      email: userRow[0].email,
-      orgId: member[0].orgId,
-    };
-  }
+  const preferredEmail = process.env.LITE_OWNER_EMAIL?.trim().toLowerCase();
 
-  // Normal path: verify the signed cookie, then resolve to a user row.
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  const verified = verifySessionToken(token);
-  if (!verified) return null;
-
-  const [user] = await db
-    .select({ id: schema.users.id, email: schema.users.email })
-    .from(schema.users)
-    .where(eq(schema.users.id, verified.userId))
-    .limit(1);
-  if (!user) return null;
-
-  const [member] = await db
-    .select({ orgId: schema.orgMembers.orgId })
+  const rows = await db
+    .select({
+      userId: schema.users.id,
+      email: schema.users.email,
+      orgId: schema.orgMembers.orgId,
+    })
     .from(schema.orgMembers)
-    .where(eq(schema.orgMembers.userId, user.id))
-    .limit(1);
-  if (!member) return null;
+    .innerJoin(schema.users, eq(schema.users.id, schema.orgMembers.userId))
+    .orderBy(schema.users.createdAt);
 
-  return { userId: user.id, email: user.email, orgId: member.orgId };
+  if (rows.length === 0) return null;
+
+  const chosen = preferredEmail
+    ? (rows.find((r) => r.email.toLowerCase() === preferredEmail) ?? rows[0])
+    : rows[0];
+
+  return { userId: chosen.userId, email: chosen.email, orgId: chosen.orgId };
 }
 
 export async function requireAppSession(): Promise<AppSession> {
   const session = await getAppSession();
-  if (!session) throw new Error("Not authenticated");
+  if (!session) {
+    throw new Error(
+      "No workspace found — run scripts/bootstrap-lite.ts to provision the org.",
+    );
+  }
   return session;
 }
