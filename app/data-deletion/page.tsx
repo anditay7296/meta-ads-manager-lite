@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "User Data Deletion — AI Ads Agent",
+  title: "User Data Deletion — Meta Ads Manager Lite",
   description:
-    "How to request deletion of your data from AI Ads Agent (Andi Claude).",
+    "How to request deletion of your data from Meta Ads Manager Lite (Andi Claude).",
 };
 
 /**
@@ -16,7 +16,7 @@ export default function DataDeletionPage() {
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-6 py-16 text-zinc-800 dark:text-zinc-200">
       <h1 className="text-2xl font-semibold">User Data Deletion</h1>
       <p className="text-sm leading-6">
-        AI Ads Agent (Meta app name: <strong>Andi Claude</strong>) is an
+        Meta Ads Manager Lite (Meta app name: <strong>Andi Claude</strong>) is an
         internal advertising-operations tool operated by FunnelDuo. When you
         connect your Meta account, we store: your Meta user ID and name, the
         metadata of ad accounts, Facebook Pages and Instagram accounts you

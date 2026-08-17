@@ -13,13 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Ads Agent",
-  description: "Run your Meta ads without ever opening Ads Manager.",
+  title: "Meta Ads Manager Lite",
+  description: "Dashboard, campaigns, copy and rules for two Meta ad accounts.",
   robots: { index: false, follow: false },
   // Launch full-screen (no Safari chrome) when opened from the iOS home screen.
   appleWebApp: {
     capable: true,
-    title: "Ads Agent",
+    title: "Ads Lite",
     statusBarStyle: "default",
   },
 };

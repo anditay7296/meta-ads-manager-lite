@@ -482,7 +482,8 @@ function AccountSection({
                 </span>
               </span>
             </span>
-            <span className="font-normal text-zinc-500">act_{group.metaAccountId}</span>
+            {/* metaAccountId is stored WITH the act_ prefix — don't add a second one. */}
+            <span className="font-normal text-zinc-500">{group.metaAccountId}</span>
           </button>
         </td>
       </tr>

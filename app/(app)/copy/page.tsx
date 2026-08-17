@@ -22,7 +22,7 @@ export default async function CopyPage({
     <>
       <Topbar
         title="Copywriting library"
-        subtitle={`${entries.length} entries · feeds the bulk variation factory + agent ad creation`}
+        subtitle={`${entries.length} entries · feeds the bulk variation factory on /campaigns`}
       />
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4 sm:p-8">
         <div className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
@@ -30,7 +30,7 @@ export default async function CopyPage({
           <p className="mt-1 text-xs text-zinc-500">
             Each entry holds up to 4 variants (matches Meta's multi-text
             feature). Tag by audience, funnel stage, and pain-point slug so the
-            variation factory + agent can find the right copy.
+            variation factory can find the right copy.
           </p>
           <div className="mt-4">
             <CreateEntryForm />
