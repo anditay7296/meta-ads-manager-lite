@@ -2124,6 +2124,33 @@ export type CloneAdSetResult = {
 const SUBCODE_UNAVAILABLE_CUSTOM_AUDIENCE = 1359207;
 
 /**
+ * Keep only the writable keys of a promoted_object. Meta echoes derived flags
+ * such as `smart_pse_enabled` on reads and rejects them on writes.
+ */
+function sanitizePromotedObject(po: unknown): Record<string, unknown> | undefined {
+  if (!po || typeof po !== "object") return undefined;
+  const WRITABLE = new Set([
+    "pixel_id",
+    "custom_event_type",
+    "custom_event_str",
+    "custom_conversion_id",
+    "page_id",
+    "application_id",
+    "object_store_url",
+    "product_set_id",
+    "product_catalog_id",
+    "offer_id",
+    "place_page_set_id",
+    "offline_conversion_data_set_id",
+  ]);
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(po as Record<string, unknown>)) {
+    if (WRITABLE.has(k) && v !== null && v !== undefined) out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
  * True when Meta refused the create specifically because the targeting names
  * custom/lookalike audiences that are unavailable in the destination account.
  * Matches on subcode first, message text second — Meta has been inconsistent
@@ -2585,10 +2612,21 @@ export async function cloneAdSetToCampaign(opts: {
         }
       } else {
         body.targeting = src.targeting;
-        if (src.promoted_object) body.promoted_object = src.promoted_object;
       }
-    } else if (!isCrossAccount && src.promoted_object) {
-      body.promoted_object = src.promoted_object;
+    }
+
+    // promoted_object was previously only carried on the non-graft path, so
+    // every cross-account clone of a conversion-optimised ad set was sent
+    // without one and Meta rejected it with subcode 1815430 ("Please select a
+    // promoted object for your ad set"). OFFSITE_CONVERSIONS ad sets require
+    // it — it names the pixel and the event being optimised for.
+    //
+    // Pixels are business-scoped rather than ad-account-scoped, so the
+    // source's pixel is normally valid in the destination account; fall back
+    // to a destination reference ad set's promoted_object when it is not.
+    if (!body.promoted_object) {
+      const po = src.promoted_object ?? referenceAdSet?.promoted_object;
+      if (po) body.promoted_object = sanitizePromotedObject(po);
     }
   }
 
