@@ -1,17 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
+import { Logo } from "@/components/app-shell/Logo";
 
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-50 p-8 dark:bg-zinc-950">
-      <Image
-        src="/logo.png"
-        alt="AI Freedom Business"
-        width={128}
-        height={128}
-        className="h-20 w-auto rounded-xl object-contain"
-        priority
-      />
+      <Logo markClassName="h-12 w-auto" />
       <h1 className="text-2xl font-semibold">Page not found</h1>
       <p className="max-w-md text-center text-sm text-zinc-500">
         That page doesn't exist (or you don't have access). Sometimes a project

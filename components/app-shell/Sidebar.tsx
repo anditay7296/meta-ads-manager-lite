@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/lib/stores/sidebar";
+import { Logo } from "./Logo";
 import { resolveNavOrder, type NavItem } from "./nav-items";
 import { saveNavOrderAction } from "./nav-order-actions";
 
@@ -132,7 +132,7 @@ export function Sidebar({
         )}
       >
         <div className="flex h-14 items-center gap-2 px-4 border-b border-zinc-200 dark:border-zinc-800">
-          <Image src="/logo.png" alt="AI Freedom Business" width={80} height={32} className="h-8 w-auto object-contain" />
+          <Logo markClassName="h-7 w-auto" />
         </div>
         <nav className="flex-1 overflow-y-auto p-2">
           {order.map((item) => {

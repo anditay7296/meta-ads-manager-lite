@@ -14,7 +14,12 @@ function settingsError(request: NextRequest, message: string) {
 export async function GET(request: NextRequest) {
   const session = await getAppSession();
   if (!session) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    // No sign-in exists to bounce to (see lib/auth/session.ts) — a null session
+    // means the workspace was never provisioned, so say that instead of 404ing.
+    return settingsError(
+      request,
+      "No workspace found — run `npm run bootstrap` to provision it.",
+    );
   }
 
   // Normalize defensively (trim + strip wrapping quotes), then validate the

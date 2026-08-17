@@ -27,13 +27,46 @@ const DEFAULT_CONDITION: ConditionRow = {
   window: "yesterday",
 };
 
-// KL = UTC+8; cron is in UTC
-const SCHEDULE_PRESETS = [
-  { label: "Daily 00:00 KL", cron: "0 16 * * *" },
-  { label: "Daily 08:00 KL", cron: "0 0 * * *" },
-  { label: "Daily 09:00 KL", cron: "0 1 * * *" },
-  { label: "Daily 12:00 KL", cron: "0 4 * * *" },
-];
+/**
+ * KL is UTC+8 with no DST, and cron runs in UTC — so a preset is the KL hour
+ * minus 8. Times before 08:00 KL wrap to the previous UTC day, which is why
+ * 00:00 KL is `0 16 * * *` and not `0 0 * * *`.
+ *
+ * Computed rather than hand-written: 16 literal cron strings is 16 chances to
+ * fat-finger an hour, and an off-by-one here would fire a pause at the wrong
+ * time of day.
+ */
+function klCron(hour: number, minute = 0): string {
+  return `${minute} ${(hour - 8 + 24) % 24} * * *`;
+}
+
+function klLabel(hour: number, minute = 0): string {
+  const hh = String(hour).padStart(2, "0");
+  const mm = String(minute).padStart(2, "0");
+  return `Daily ${hh}:${mm} KL`;
+}
+
+const SCHEDULE_PRESETS: Array<{ label: string; cron: string }> = [
+  // Overnight + morning
+  [0, 0],
+  [8, 0],
+  [9, 0],
+  // Midday through end of day, hourly
+  [12, 0],
+  [13, 0],
+  [14, 0],
+  [15, 0],
+  [16, 0],
+  [17, 0],
+  [18, 0],
+  [19, 0],
+  [20, 0],
+  [21, 0],
+  [22, 0],
+  [23, 0],
+  // Last call before midnight — catches the day before spend resets.
+  [23, 30],
+].map(([h, m]) => ({ label: klLabel(h, m), cron: klCron(h, m) }));
 
 const INTERVAL_PRESETS = [
   { label: "15 min", minutes: 15 },

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { BRAND_ACCENT } from "@/lib/brand";
 
 // PWA manifest — drives the "Add to Home Screen" experience on Android/Chrome.
 // iOS uses app/apple-icon.png + the appleWebApp metadata in layout.tsx instead.
@@ -10,7 +11,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#229ED9",
+    theme_color: BRAND_ACCENT,
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
