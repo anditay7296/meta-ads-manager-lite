@@ -1,5 +1,5 @@
 import { db, schema } from "@/lib/db/client";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import { getMetaClientForAdAccount } from "@/lib/meta/get-client";
 import type { MetaClient } from "@/lib/meta/client";
 import { journalAppend } from "@/lib/db/queries/journal";
@@ -2955,6 +2955,14 @@ export async function createMatchingCampaignInAccount(opts: {
   if (!srcCampaignRow) return { ok: false, message: "Source campaign not found" };
 
   // 2. Reuse an existing same-named campaign in the destination if we have one.
+  //
+  // Archived/deleted twins are excluded on purpose: accounts often hold an
+  // ARCHIVED campaign with the same name as the live one, and the unordered
+  // limit(1) could hand the clone job a dead, invisible destination. Skipping
+  // them means a live twin is reused as before, and when only a dead twin
+  // exists we fall through to creating a fresh PAUSED campaign that mirrors
+  // the source's objective / budget / bid strategy — which is what the
+  // operator actually wants the job to proceed into.
   const [existing] = await db
     .select({ id: campaigns.id, metaCampaignId: campaigns.metaCampaignId })
     .from(campaigns)
@@ -2963,6 +2971,7 @@ export async function createMatchingCampaignInAccount(opts: {
         eq(campaigns.orgId, opts.orgId),
         eq(campaigns.adAccountId, dstAccount.id),
         eq(campaigns.name, srcCampaignRow.name),
+        notInArray(campaigns.status, ["ARCHIVED", "DELETED"]),
       ),
     )
     .limit(1);

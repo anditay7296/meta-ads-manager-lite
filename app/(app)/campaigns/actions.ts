@@ -968,6 +968,8 @@ export async function cloneCampaignToAccountAction(
       .select({
         id: schema.campaigns.id,
         name: schema.campaigns.name,
+        status: schema.campaigns.status,
+        adAccountId: schema.campaigns.adAccountId,
         metaAccountId: schema.adAccounts.metaAccountId,
         accountName: schema.adAccounts.name,
       })
@@ -981,7 +983,26 @@ export async function cloneCampaignToAccountAction(
 
   let destCampaignId: string;
   if ("campaignId" in dest) {
-    destCampaignId = dest.campaignId;
+    // A stale dialog (or "Active only" hiding the live twin) can hand us an
+    // ARCHIVED destination. Never clone into a dead campaign — re-route
+    // through createMatchingCampaignInAccount for that campaign's account,
+    // which reuses the live twin if one exists or creates a fresh PAUSED
+    // campaign mirroring the source's settings, and the job proceeds there.
+    const [picked] = await resolve(dest.campaignId);
+    if (!picked) return { ok: false, message: "Destination campaign not found" };
+    if (picked.status === "ARCHIVED" || picked.status === "DELETED") {
+      const target = await createMatchingCampaignInAccount({
+        orgId,
+        sourceCampaignLocalId: src.id,
+        destAdAccountLocalId: picked.adAccountId,
+        actor: { type: "user", userId: session.userId },
+      });
+      if (!target.ok) return { ok: false, message: target.message };
+      destCampaignId = target.campaignLocalId;
+      revalidatePath("/campaigns");
+    } else {
+      destCampaignId = dest.campaignId;
+    }
   } else {
     // Account-only destination: ensure a same-named campaign exists there
     // (creates a PAUSED mirror of the source's objective when missing).

@@ -38,7 +38,13 @@ export function CloneCampaignDialog({ campaign, groups, onClose }: Props) {
         .map((g) => ({
           adAccountId: g.adAccountId,
           adAccountName: g.adAccountName,
-          match: g.campaigns.find((c) => c.name === campaign.name) ?? null,
+          // Skip archived twins: the server never clones into one (it creates
+          // a fresh PAUSED campaign instead), so offering an archived match
+          // here would promise the wrong behavior.
+          match:
+            g.campaigns.find(
+              (c) => c.name === campaign.name && c.status !== "ARCHIVED",
+            ) ?? null,
         })),
     [groups, sourceAccountId, campaign.name],
   );
