@@ -13,6 +13,8 @@ type PerAdSet = {
   status: "cloned" | "skipped" | "failed";
   newAdSetMetaId?: string;
   needsManualIgFix?: number;
+  adsCreated?: number;
+  adsFailed?: number;
   error?: string;
 };
 
@@ -97,6 +99,11 @@ export default async function CloneJobDetailPage({
               {failures.map((p, i) => (
                 <li key={i}>
                   <span className="font-medium">{p.name}</span> — {p.error ?? "unknown error"}
+                  {typeof p.adsCreated === "number" && (
+                    <span className="ml-1 opacity-80">
+                      ({p.adsCreated} ad(s) created)
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

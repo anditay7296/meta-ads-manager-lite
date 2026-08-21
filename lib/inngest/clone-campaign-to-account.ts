@@ -45,6 +45,10 @@ type PerAdSetEntry = {
   status: "cloned" | "skipped" | "failed";
   newAdSetMetaId?: string;
   needsManualIgFix?: number;
+  /** Ads actually rebuilt inside the new ad set. An ad set can be created
+   * successfully and still end up empty — see the status logic below. */
+  adsCreated?: number;
+  adsFailed?: number;
   error?: string;
 };
 
@@ -127,11 +131,31 @@ export const cloneCampaignToAccount = inngest.createFunction(
               actor: { type: "user", userId: triggeredBy },
             });
             if (r.ok) {
+              // `r.ok` only means the AD SET was created. Its ads are rebuilt
+              // in a separate pass that can fail on its own — most commonly
+              // when the destination account sits in another Business
+              // portfolio and cannot promote the source Page, so every
+              // creative is rejected. Reporting "cloned" on `r.ok` alone hid
+              // exactly that: a campaign of empty ad sets under a "48/48
+              // cloned, 0 failed" job. An ad set is only cleanly cloned when
+              // nothing complained; a source ad set with no ads at all still
+              // counts as clean (created 0, failed 0, no errors).
+              const ads = r.ads;
+              const adsBroke = ads.failed > 0 || ads.errors.length > 0;
               return {
                 name: a.name,
-                status: "cloned",
+                status: adsBroke ? "failed" : "cloned",
                 newAdSetMetaId: r.newAdSetMetaId,
-                needsManualIgFix: r.ads.needsManualIgFix ?? 0,
+                needsManualIgFix: ads.needsManualIgFix ?? 0,
+                adsCreated: ads.created,
+                adsFailed: ads.failed,
+                ...(adsBroke
+                  ? {
+                      error:
+                        `ad set created but ${ads.failed} ad(s) failed to clone — ` +
+                        (ads.errors[0] ?? "no error reported"),
+                    }
+                  : {}),
               };
             }
             // Definitive failure — cloneAdSetToCampaign already exhausted its
