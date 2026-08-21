@@ -2,10 +2,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/lib/db/client";
 
 /**
- * The whole point of "Lite": this app manages exactly two Meta ad accounts.
+ * The whole point of "Lite": this app manages a fixed, short list of Meta ad
+ * accounts — never the whole business.
  *
  *   act_1690421202260749 — AI Agency 02
  *   act_1386521543403841 — AI Agency 05
+ *   act_1299145415117982 — Ad Account 01 backup
  *
  * Override with LITE_AD_ACCOUNT_IDS (comma-separated, `act_` prefix optional).
  *
@@ -16,6 +18,9 @@ import { db, schema } from "@/lib/db/client";
  *
  *   1. `connectMeta()` — filters Meta's inventory before insert, so re-running
  *      OAuth can never re-widen the app to all ~8 accounts the token can see.
+ *      Corollary: adding an id here does NOT create its `ad_accounts` row on
+ *      its own — re-run `npm run bootstrap`, which backfills newly
+ *      allowlisted accounts from Meta using the stored token.
  *   2. `syncProject()` — skips any non-allowlisted account already in the table.
  *   3. `cloneAdSetToCampaign()` / `createMatchingCampaignInAccount()` in
  *      lib/meta/actions.ts — refuse to write into an outside account.
@@ -23,6 +28,7 @@ import { db, schema } from "@/lib/db/client";
 const DEFAULT_ACCOUNT_IDS = [
   "act_1690421202260749",
   "act_1386521543403841",
+  "act_1299145415117982",
 ] as const;
 
 function normalize(raw: string): string {

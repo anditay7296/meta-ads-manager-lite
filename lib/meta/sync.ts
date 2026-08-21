@@ -265,8 +265,8 @@ export async function syncProject(opts: {
     );
 
   // Lite guard: never sync an account outside the allowlist, even if one
-  // somehow ends up attached to the project. Keeps "only these two accounts"
-  // true regardless of what is in the table.
+  // somehow ends up attached to the project. Keeps "only the allowlisted
+  // accounts" true regardless of what is in the table.
   const accountRows = filterToLiteAccounts(projectAccounts);
   const skipped = projectAccounts.length - accountRows.length;
   if (skipped > 0) {

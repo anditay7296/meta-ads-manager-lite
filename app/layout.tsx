@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Meta Ads Manager Lite",
-  description: "Dashboard, campaigns, copy and rules for two Meta ad accounts.",
+  description: "Dashboard, campaigns, copy and rules for a fixed set of Meta ad accounts.",
   robots: { index: false, follow: false },
   // Launch full-screen (no Safari chrome) when opened from the iOS home screen.
   appleWebApp: {

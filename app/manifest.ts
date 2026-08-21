@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Meta Ads Manager Lite",
     short_name: "Ads Lite",
-    description: "Dashboard, campaigns, copy and rules for two Meta ad accounts.",
+    description: "Dashboard, campaigns, copy and rules for a fixed set of Meta ad accounts.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

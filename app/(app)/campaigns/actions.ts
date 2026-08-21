@@ -856,7 +856,7 @@ export async function refreshCampaignsForSyncAction(
       ok: true,
       matchFound: false,
       message:
-        "Only one ad account is attached to this project — check LITE_AD_ACCOUNT_IDS and re-run scripts/bootstrap-lite.ts.",
+        "Fewer than two ad accounts are attached to this project — check LITE_AD_ACCOUNT_IDS and re-run scripts/bootstrap-lite.ts.",
     };
   }
 
@@ -940,7 +940,7 @@ export async function refreshCampaignsForSyncAction(
     message:
       distinctAccountIds.size >= 2
         ? undefined
-        : "No matching campaign found in the other account. Create the campaign in Ads Manager with the exact same name first.",
+        : "No matching campaign found in another ad account. Create the campaign in Ads Manager with the exact same name first.",
   };
 }
 

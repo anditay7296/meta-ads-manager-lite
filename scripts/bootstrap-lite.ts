@@ -2,8 +2,12 @@
  * One-shot provisioning for Meta Ads Manager Lite. Idempotent — safe to
  * re-run; every step skips work that already exists.
  *
- * Creates: org → owner user → project → Meta connection → exactly the two
+ * Creates: org → owner user → project → Meta connection → exactly the
  * allowlisted ad accounts → Pages → storage bucket → first sync.
+ *
+ * Re-run it after widening LITE_AD_ACCOUNT_IDS: step 4b backfills any newly
+ * allowlisted account from Meta, since connectMeta() only inserts rows on a
+ * first connect.
  *
  * The app has no sign-in (see lib/auth/session.ts), so the user row exists
  * only to own the org and stamp created_by — it carries no password.
@@ -32,6 +36,7 @@ import {
   assignPageToProject,
 } from "../lib/db/queries/projects";
 import { decryptToken } from "../lib/crypto/tokens";
+import { getMetaClientForOrg } from "../lib/meta/get-client";
 import { LITE_AD_ACCOUNT_IDS } from "../lib/lite/accounts";
 import { syncProject } from "../lib/meta/sync";
 import { ensurePostAssetsBucket } from "../lib/storage";
@@ -174,7 +179,7 @@ async function main() {
     const created = await createProject({
       orgId: org.id,
       name: PROJECT_NAME,
-      description: "The two ad accounts this Lite app manages.",
+      description: "The ad accounts this Lite app manages.",
       createdBy: user.id,
     });
     project = { id: created.id };
@@ -225,8 +230,79 @@ async function main() {
     );
   }
 
+  // ─── 4b. Backfill accounts added to the allowlist later ─────────────────
+  // connectMeta() is the only writer of ad_accounts rows, and it is skipped
+  // above once a connection exists. So widening LITE_AD_ACCOUNT_IDS after the
+  // first bootstrap would otherwise leave the new account with no row, and
+  // step 5's assign — an UPDATE, not an upsert — would fail it as "not
+  // returned by Meta". Fetch the token's inventory and insert what's missing.
+  const existingAccountIds = new Set(
+    (
+      await db
+        .select({ metaAccountId: schema.adAccounts.metaAccountId })
+        .from(schema.adAccounts)
+        .where(eq(schema.adAccounts.orgId, org.id))
+    ).map((r) => r.metaAccountId),
+  );
+  const notYetStored = LITE_AD_ACCOUNT_IDS.filter(
+    (id) => !existingAccountIds.has(id),
+  );
+  if (notYetStored.length > 0) {
+    const handle = await getMetaClientForOrg(org.id);
+    if (!handle) {
+      throw new Error(
+        `No usable Meta connection to look up ${notYetStored.join(", ")}.`,
+      );
+    }
+    const inventory = await handle.client.listAdAccounts();
+    const toInsert = inventory.data.filter((a) => notYetStored.includes(a.id));
+    if (toInsert.length > 0) {
+      await db
+        .insert(schema.adAccounts)
+        .values(
+          toInsert.map((a) => ({
+            orgId: org.id,
+            connectionId: handle.connectionId,
+            metaAccountId: a.id,
+            name: a.name,
+            currency: a.currency ?? null,
+            timezone: a.timezone_name ?? null,
+            businessId: a.business?.id ?? null,
+            raw: a as unknown,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [schema.adAccounts.orgId, schema.adAccounts.metaAccountId],
+          set: {
+            connectionId: handle.connectionId,
+            name: sql`excluded.name`,
+            currency: sql`excluded.currency`,
+            timezone: sql`excluded.timezone`,
+            businessId: sql`excluded.business_id`,
+            raw: sql`excluded.raw`,
+            updatedAt: sql`now()`,
+          },
+        });
+      log(
+        "accounts",
+        `backfilled ${toInsert.map((a) => `${a.id} (${a.name})`).join(", ")}`,
+      );
+    }
+    const unreachable = notYetStored.filter(
+      (id) => !toInsert.some((a) => a.id === id),
+    );
+    if (unreachable.length > 0) {
+      throw new Error(
+        `This Meta token cannot see: ${unreachable.join(", ")}. Grant the ` +
+          `connected Meta user access to them in Business Manager, or drop ` +
+          `them from LITE_AD_ACCOUNT_IDS.`,
+      );
+    }
+  }
+
   // ─── 5. Narrow to the allowlist ─────────────────────────────────────────
-  // connectMeta pulls EVERY ad account the token can see. Lite manages two.
+  // connectMeta pulls EVERY ad account the token can see. Lite manages only
+  // the allowlist, so drop anything else that made it into the table.
   const removed = await db
     .delete(schema.adAccounts)
     .where(

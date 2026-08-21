@@ -5,12 +5,13 @@ Read at the start of every session opened in this directory. Keep it current.
 ## What this is
 
 A cut-down fork of **AI Ads Agent** (`~/AI Ads Agent`, github.com/anditay7296/ai-ads-agent,
-ai-ads-agent-five.vercel.app) scoped to **two ad accounts** and **four pages**.
+ai-ads-agent-five.vercel.app) scoped to **three ad accounts** and **four pages**.
 
 | Meta account | Name |
 |---|---|
 | `act_1690421202260749` | AI Agency 02 |
 | `act_1386521543403841` | AI Agency 05 |
+| `act_1299145415117982` | Ad Account 01 backup |
 
 | Page | Route | What it does |
 |---|---|---|
@@ -93,13 +94,29 @@ scripts/bootstrap-lite.ts                   One-shot idempotent provisioning
 
 Two layers, on purpose:
 
-1. **Data**: bootstrap provisions one project holding only the two accounts, so every existing
-   `projectId`-scoped query is already correct and needed no edits.
+1. **Data**: bootstrap provisions one project holding only the allowlisted accounts, so every
+   existing `projectId`-scoped query is already correct and needed no edits.
 2. **Guard**: `lib/lite/accounts.ts` reads `LITE_AD_ACCOUNT_IDS` and is enforced at three
    chokepoints — `connectMeta()` filters Meta's inventory *before* insert (so re-running OAuth can
    never re-widen the app to all ~8 accounts the token can see), `syncProject()` skips
    non-allowlisted rows, and the two clone destinations in `lib/meta/actions.ts` refuse to write
    outside the list.
+
+### Adding an ad account
+
+Editing the allowlist is **not** enough. `connectMeta()` is the only thing that inserts
+`ad_accounts` rows, and bootstrap skips it once a Meta connection exists — so a newly allowlisted
+account would have no row, and `assignAdAccountsByMetaIds()` (an UPDATE, not an upsert) would
+silently match nothing and fail the run. The steps:
+
+1. Add the id to `DEFAULT_ACCOUNT_IDS` in `lib/lite/accounts.ts` **and** to `LITE_AD_ACCOUNT_IDS`
+   in `.env.local` — the env var overrides the default, so changing only one leaves the app on the
+   old list. Set it on Vercel too.
+2. `npm run bootstrap` — step 4b backfills the row from Meta's inventory using the stored token,
+   then attaches it to the project and syncs.
+
+If the connected Meta user cannot see the account, step 4b throws by name rather than provisioning
+a half-configured app. Fix it in Business Manager, don't work around it.
 
 ## Local dev
 

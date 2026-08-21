@@ -15,6 +15,7 @@ import { AdGrid } from "./AdGrid";
 import { DashboardToolbar } from "./DashboardToolbar";
 import { LoadMoreButton } from "@/components/LoadMoreButton";
 import { formatMyr, formatNumber } from "@/lib/utils";
+import { LITE_AD_ACCOUNT_IDS } from "@/lib/lite/accounts";
 
 // Headroom over Vercel's default function timeout — the dashboard query
 // still pulls every ad row for the project (26k+) before filtering.
@@ -99,7 +100,7 @@ export default async function DashboardPage({
         />
         <EmptyState
           title="Workspace not provisioned yet"
-          body="Run scripts/bootstrap-lite.ts to create the project and attach the two ad accounts."
+          body="Run scripts/bootstrap-lite.ts to create the project and attach the ad accounts."
           ctaHref={null}
           ctaLabel={null}
         />
@@ -147,7 +148,7 @@ export default async function DashboardPage({
         />
         <EmptyState
           title="No ad accounts attached"
-          body="Run scripts/bootstrap-lite.ts to attach act_1690421202260749 and act_1386521543403841 to this project."
+          body={`Run scripts/bootstrap-lite.ts to attach ${LITE_AD_ACCOUNT_IDS.join(", ")} to this project.`}
           ctaHref={null}
           ctaLabel={null}
         />

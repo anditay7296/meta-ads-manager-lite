@@ -54,7 +54,7 @@ export default async function CampaignsPage({
         <ManagerTabs active="campaigns" />
         <EmptyHint
           title="Workspace not provisioned yet"
-          body="Run scripts/bootstrap-lite.ts to create the project and attach the two ad accounts."
+          body="Run scripts/bootstrap-lite.ts to create the project and attach the ad accounts."
           ctaHref={null}
           ctaLabel={null}
         />

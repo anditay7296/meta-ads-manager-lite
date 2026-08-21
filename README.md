@@ -1,9 +1,10 @@
 # Meta Ads Manager Lite
 
-A cut-down clone of [AI Ads Agent](https://github.com/anditay7296/ai-ads-agent), scoped to two Meta
+A cut-down clone of [AI Ads Agent](https://github.com/anditay7296/ai-ads-agent), scoped to three Meta
 ad accounts and four pages.
 
-**Accounts:** `act_1690421202260749` (AI Agency 02) · `act_1386521543403841` (AI Agency 05)
+**Accounts:** `act_1690421202260749` (AI Agency 02) · `act_1386521543403841` (AI Agency 05) ·
+`act_1299145415117982` (Ad Account 01 backup)
 
 **Pages:** Dashboard · Campaigns · Copywriting · Automated Rules
 
@@ -18,14 +19,14 @@ on the dashboard as the owner. That is deliberate.
 
 **So gate it at the platform.** On Vercel: Project → Settings → Deployment Protection → enable
 *Vercel Authentication* (only your Vercel account can open it) or *Password Protection*. Without
-that, anyone who learns the URL can pause ads, change budgets and bulk-launch on
-`act_1690421202260749` and `act_1386521543403841`.
+that, anyone who learns the URL can pause ads, change budgets and bulk-launch on all three
+accounts.
 
 ---
 
 ## ⚠️ Rules are managed here, not executed here
 
-This app registers **no rule-running cron**. Both ad accounts are already policed by the parent app's
+This app registers **no rule-running cron**. The ad accounts are already policed by the parent app's
 schedulers (00:00 KL daily + every 5 minutes). Two schedulers evaluating the same ads would
 double-pause them.
 
