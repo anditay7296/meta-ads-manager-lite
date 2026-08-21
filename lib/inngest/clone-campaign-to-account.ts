@@ -24,6 +24,8 @@ const { cloneJobs, campaigns } = schema;
  *    cross-account (see extractAdCode / auto-sync-aia matchBy:"name").
  *  - Progress is written to the clone_jobs row after every ad set so the
  *    /campaigns/clone-jobs page can poll it (the app has no websockets).
+ *  - A circuit breaker (MAX_FAILURES) aborts the job once more than ten ad
+ *    sets have failed — see the constant for why.
  *  - The destination campaign must already exist by the time the event fires;
  *    this job never creates campaigns (cloneCampaignToAccountAction auto-creates
  *    a same-named PAUSED campaign first when the operator picks an account
@@ -54,6 +56,17 @@ type PerAdSetEntry = {
 
 const CLONE_ATTEMPTS = 3; // bounded in-step self-heal for transient blips
 const PACE = "5s"; // checkpointed gap between ad sets (Meta cross-account throttle)
+/**
+ * Circuit breaker. Once MORE than this many ad sets have failed, the job stops
+ * instead of grinding through the rest. Past this point the failures are
+ * almost never per-ad-set — they are one systemic cause (archived destination
+ * campaign, Page not shareable into the dest Business, expired token…) that
+ * every remaining ad set will hit identically, and each attempt still costs
+ * Meta rate-limit budget plus 5s of pacing. The job ends as `failed` with an
+ * explanatory `error`; a re-run after fixing the cause skips by name, so
+ * nothing already cloned is redone.
+ */
+const MAX_FAILURES = 10;
 
 export const cloneCampaignToAccount = inngest.createFunction(
   {
@@ -112,7 +125,10 @@ export const cloneCampaignToAccount = inngest.createFunction(
     });
 
     // B) One checkpoint per ad set.
+    let aborted = false;
+    let attempted = 0;
     for (const a of src.adSets) {
+      attempted++;
       const outcome = await step.run(`clone-${a.metaId}`, async (): Promise<PerAdSetEntry> => {
         let lastErr = "";
         for (let attempt = 1; attempt <= CLONE_ATTEMPTS; attempt++) {
@@ -173,16 +189,17 @@ export const cloneCampaignToAccount = inngest.createFunction(
       });
 
       // Record progress. Idempotent: skip if this ad set's name is already
-      // logged (guards the rare retry-after-commit double count).
-      await step.run(`record-${a.metaId}`, async () => {
+      // logged (guards the rare retry-after-commit double count). Returns the
+      // job's running failure count so the loop can trip the circuit breaker.
+      const failedSoFar = await step.run(`record-${a.metaId}`, async (): Promise<number> => {
         const [job] = await db
-          .select({ perAdSet: cloneJobs.perAdSet })
+          .select({ perAdSet: cloneJobs.perAdSet, failed: cloneJobs.failed })
           .from(cloneJobs)
           .where(eq(cloneJobs.id, jobId))
           .limit(1);
         const existing = (job?.perAdSet as PerAdSetEntry[] | null) ?? [];
-        if (existing.some((e) => e.name === outcome.name)) return;
-        await db
+        if (existing.some((e) => e.name === outcome.name)) return job?.failed ?? 0;
+        const [updated] = await db
           .update(cloneJobs)
           .set({
             cloned: outcome.status === "cloned" ? sql`${cloneJobs.cloned} + 1` : sql`${cloneJobs.cloned}`,
@@ -191,30 +208,53 @@ export const cloneCampaignToAccount = inngest.createFunction(
             perAdSet: sql`${cloneJobs.perAdSet} || ${JSON.stringify(outcome)}::jsonb`,
             updatedAt: sql`now()`,
           })
-          .where(eq(cloneJobs.id, jobId));
+          .where(eq(cloneJobs.id, jobId))
+          .returning({ failed: cloneJobs.failed });
+        return updated?.failed ?? 0;
       });
+
+      if (failedSoFar > MAX_FAILURES) {
+        aborted = true;
+        break;
+      }
 
       // Checkpointed pacing — no Vercel CPU billed during the wait.
       await step.sleep(`pace-${a.metaId}`, PACE);
     }
 
     // C) Finalize + journal.
+    const notAttempted = src.adSets.length - attempted;
     return step.run("finalize", async () => {
       const [job] = await db.select().from(cloneJobs).where(eq(cloneJobs.id, jobId)).limit(1);
       const failed = job?.failed ?? 0;
-      const status: "done" | "done_with_errors" = failed > 0 ? "done_with_errors" : "done";
-      await db.update(cloneJobs).set({ status, updatedAt: sql`now()` }).where(eq(cloneJobs.id, jobId));
+      const status: "done" | "done_with_errors" | "failed" = aborted
+        ? "failed"
+        : failed > 0
+          ? "done_with_errors"
+          : "done";
+      const error = aborted
+        ? `Stopped automatically after ${failed} ad sets failed (limit ${MAX_FAILURES}) — ` +
+          `${notAttempted} ad set(s) were not attempted. Fix the cause shown below, then ` +
+          `re-run the clone; it skips everything already cloned.`
+        : null;
+      await db
+        .update(cloneJobs)
+        .set({ status, error, updatedAt: sql`now()` })
+        .where(eq(cloneJobs.id, jobId));
       await journalAppend({
         orgId,
         actorType: "user",
         actorRef: triggeredBy,
-        summary: `Cloned campaign "${job?.sourceCampaignName ?? "?"}" → ${job?.destAccountName ?? "?"}: ${job?.cloned ?? 0} cloned, ${job?.skipped ?? 0} skipped, ${failed} failed`,
+        summary:
+          (aborted ? "Clone stopped early: " : "Cloned ") +
+          `campaign "${job?.sourceCampaignName ?? "?"}" → ${job?.destAccountName ?? "?"}: ${job?.cloned ?? 0} cloned, ${job?.skipped ?? 0} skipped, ${failed} failed` +
+          (aborted ? `, ${notAttempted} not attempted` : ""),
         entityKind: "campaign",
         entityId: destCampaignId,
-        after: { cloned: job?.cloned, skipped: job?.skipped, failed, status },
+        after: { cloned: job?.cloned, skipped: job?.skipped, failed, status, aborted, notAttempted },
         metadata: { action: "clone_campaign_to_account", jobId, destMetaAccountId },
       });
-      return { jobId, cloned: job?.cloned ?? 0, skipped: job?.skipped ?? 0, failed, status };
+      return { jobId, cloned: job?.cloned ?? 0, skipped: job?.skipped ?? 0, failed, status, aborted };
     });
   },
 );
